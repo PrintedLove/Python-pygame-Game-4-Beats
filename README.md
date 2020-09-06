@@ -5,6 +5,7 @@ Blog: https://printed.tistory.com/
 Update log >
 
 2020.09.05 - Project Create
+2020.09.06 - window set, resorce added
 
 
 
