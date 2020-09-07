@@ -1,8 +1,9 @@
 # [Python pygame Game] 4 Beats
 # made by "PrintedLove"
 # https://printed.tistory.com/
-
 # This game was created with reference to ParkJuneWoo(korca0220)'s [Finding-the-Rabbit]
+
+#-*-coding: utf-8
 
 import pygame as pg
 import os, time, random
@@ -12,7 +13,6 @@ TITLE = "4 Beats"
 WIDTH = 640
 HEIGHT = 480
 FPS = 60
-FONT_NAME = 'HeirofLightRegular.ttf'
 
 ### color setting
 WHITE = (238, 238, 238)
@@ -28,15 +28,24 @@ class Game:
         self.screen = pg.display.set_mode((WIDTH, HEIGHT))      #screen size
         self.clock = pg.time.Clock()        #FPS timer
         self.running = True     #game initialize Boolean value
-        self.screen_mode = 0    #screen mode (0: logo, 1: logo2, 2: main, 3: help, 4:stage select, 10: play)
+        self.screen_mode = 0    #screen mode (0: logo, 1: logo2, 2: main, 3: stage select, 10: play)
         self.screen_value = [0, 0, 0, 0]       #screen management value
+        self.language_mode = 0         #0: english, 1: korean, 2~: custom
         self.load_date()        #data loading
 
     def load_date(self): ########################## Data Loading
         self.dir = os.path.dirname(__file__)
         
         ### font
-        self.gameFont = os.path.join(os.path.join(self.dir, 'font'), FONT_NAME)
+        self.fnt_dir = os.path.join(self.dir, 'font')
+        self.gameFont = os.path.join(self.fnt_dir, "HeirofLightRegular.ttf")
+        
+        ### language
+        language_file = open(os.path.join(self.dir, 'language.ini'), "r", encoding = 'UTF-8')
+        language_lists = language_file.read().split('\n')
+        self.language_list = list()
+        self.language_list = [n.split(" _ ") for n in language_lists]
+        language_file.close()
         
         ### image
         self.img_dir = os.path.join(self.dir, 'image')
@@ -89,32 +98,47 @@ class Game:
         self.second = ((pg.time.get_ticks() - self.start_tick) / 1000)      #play time calculation
         
     def events(self):   ########################## Game Loop - Events
+        mouse_coord = pg.mouse.get_pos()    #mouse coord
+        mouse_click = False     #mouse click Boolean value
+        key_any = False          #any key Boolean value
+        key_right = False       #RIGHT key Boolean value
+        key_left = False
+        key_up = False
+        key_down = False
+        key_enter = False
+        
         for event in pg.event.get():
             if event.type == pg.QUIT:       #exit
                 if self.playing:
                     self.playing = False
                     self.running = False
-                    
+                 
             elif event.type == pg.KEYDOWN:
-                if event.key == pg.K_RIGHT:         #RIGHT key
-                    self.sound_drum1.play()
+                key_any = True
+                
+                if event.key == 275:         #RIGHT key
+                    key_right = True
 
-                elif event.key == pg.K_LEFT:         #LEFT key
-                    self.sound_drum2.play()
+                elif event.key == 276:         #LEFT key
+                    key_left = True
 
-                elif event.key == pg.K_UP:         #UP key
-                    self.sound_drum3.play()
+                elif event.key == 273:         #UP key
+                    key_up = True
 
-                elif event.key == pg.K_DOWN:         #DOWN key
-                    self.sound_drum4.play()
+                elif event.key == 274:         #DOWN key
+                    key_down = True
+
+                elif event.key == 13:         #ENTER key
+                    key_enter = True
+
+                print(event.key)
 
             elif event.type == pg.MOUSEBUTTONDOWN:      #mouse click
+                mouse_click = True
+                
                 if self.screen_mode < 4:
                     self.sound_click.play()
-
-                if self.screen_mode == 1 and self.screen_value[0] == 255:
-                    self.screen_value[3] = 1
-
+                    
         if self.screen_mode == 0:       #logo screen1
             self.screen_value[0] += 1
 
@@ -131,12 +155,15 @@ class Game:
             if self.screen_value[3] == 0:
                 if self.screen_value[0] < 255:
                     self.screen_value[0] += 2
+                else:
+                    if mouse_click or key_any:
+                        self.screen_value[3] = 1
             else:
                 if self.screen_value[0] > 0:
                     self.screen_value[0] -= 5
                 else:
                     self.screen_mode = 2
-                    self.screen_value[1] = 0
+                    self.screen_value[1] = 2
                     self.screen_value[2] = 0
                     self.screen_value[3] = 0
 
@@ -149,9 +176,44 @@ class Game:
                 else:
                     self.screen_value[2] -= 1
 
-        elif self.screen_mode == 2:       #logo screen2
-            if self.screen_value[0] < 255:
-                self.screen_value[0] += 5
+        elif self.screen_mode == 2:       #main screen
+            if self.screen_value[2] == 0:
+                if self.screen_value[0] < 255:
+                    self.screen_value[0] += 5
+            else:
+                if self.screen_value[0] > 0:
+                    self.screen_value[0] -= 17
+                else:
+                    self.screen_mode = 3
+                    self.screen_value[1] = 0
+                    self.screen_value[2] = 0
+                    self.screen_value[3] = 0
+                    
+            if self.screen_value[0] == 255:
+                for i in range(4):
+                    if mouse_coord[0] > 400 and mouse_coord[0] < 560 and mouse_coord[1] > 105 + i*70 and mouse_coord[1] < 155 + i*70:
+                        self.screen_value[1] = i + 1
+
+            if key_up and self.screen_value[1] > 1:
+                self.screen_value[1] -= 1
+
+            if key_down and self.screen_value[1] < 4:
+                self.screen_value[1] += 1
+
+            if (mouse_click or key_enter):
+                if self.screen_value[1] == 1:
+                    self.screen_value[2] = 1
+                elif self.screen_value[1] == 2:
+                    self.screen_value[2] = 1
+                elif self.screen_value[1] == 3:
+                    self.screen_value[2] = 1
+                else:
+                    if self.language_mode < len(self.language_list) - 1:
+                        self.language_mode += 1
+                    else:
+                        self.language_mode = 0
+
+                    self.gameFont = os.path.join(self.fnt_dir, self.language_list[self.language_mode][1])
         
     def draw(self):     ########################## Game Loop - Draw
         self.all_sprites.draw(self.screen)
@@ -182,14 +244,29 @@ class Game:
             
         elif mode == 2:     #main screen
             screen_alpha = min(self.screen_value[0], 255)
-            self.screen.blit(self.spr_logoback, (0, 0))
-            self.draw_text("START", 36, BLACK, 480, 105, screen_alpha)
-            self.draw_text("HELP", 36, BLACK, 480, 175, screen_alpha)
-            self.draw_text("LANG(EN)", 36, BLACK, 480, 245, screen_alpha)
-            self.draw_text("EXIT", 36, BLACK, 480, 315, screen_alpha)
 
-    def draw_text(self, text, size, color, x, y, alpha):   # Draw Text
+            if self.screen_value[2] == 0:
+                self.spr_logoback.set_alpha(255)
+            else:
+                self.spr_logoback.set_alpha(screen_alpha)
+            
+            self.screen.blit(self.spr_logoback, (0, 0))
+            
+            select_index = [False, False, False, False]
+
+            for i in range(4):
+                if i + 1 == self.screen_value[1]:
+                    select_index[i] = True
+                
+            self.draw_text(self.language_list[self.language_mode][2], 36, BLACK, 480, 105, screen_alpha, select_index[0], select_index[0])
+            self.draw_text(self.language_list[self.language_mode][3], 36, BLACK, 480, 175, screen_alpha, select_index[1], select_index[1])
+            self.draw_text(self.language_list[self.language_mode][4], 36, BLACK, 480, 245, screen_alpha, select_index[2], select_index[2])
+            self.draw_text(self.language_list[self.language_mode][0], 24, BLACK, 480, 315, screen_alpha, select_index[3], select_index[3])
+            
+    def draw_text(self, text, size, color, x, y, alpha, bold = False, underline = False):   # Draw Text
         font = pg.font.Font(self.gameFont, size)
+        font.set_bold(bold)
+        font.set_underline(underline)
         text_surface = font.render(text, True, color)
         text_rect = text_surface.get_rect()
         text_rect.midtop = (x, y)
@@ -210,5 +287,5 @@ game = Game()
 
 while game.running:
     game.new()
-            
+    
 pg.quit()
