@@ -1,6 +1,6 @@
 Made by Printed Love
 Blog: https://printed.tistory.com/
-Youtube: https://www.youtube.com/channel/UCtKTjiof6Mwa_4ffHDYyCbQ?view_as=subscriber
+
 
 
 How to play (EN)- - - - - - - - - - - - -
