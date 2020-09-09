@@ -52,13 +52,32 @@ class Game:
         self.spr_logoback = pg.image.load(os.path.join(self.img_dir, 'logoback.png'))
         self.spr_logo = pg.image.load(os.path.join(self.img_dir, 'logo.png'))
         
-        ### background music
+        ### music
         self.snd_dir = os.path.join(self.dir, 'sound')
+        self.bg_main = os.path.join(self.snd_dir, 'bg_main.ogg')
         self.sound_click = pg.mixer.Sound(os.path.join(self.snd_dir, 'click.ogg'))
         self.sound_drum1 = pg.mixer.Sound(os.path.join(self.snd_dir, 'drum1.ogg'))
         self.sound_drum2 = pg.mixer.Sound(os.path.join(self.snd_dir, 'drum2.ogg'))
         self.sound_drum3 = pg.mixer.Sound(os.path.join(self.snd_dir, 'drum3.ogg'))
         self.sound_drum4 = pg.mixer.Sound(os.path.join(self.snd_dir, 'drum4.ogg'))
+
+        ### song
+        self.song_dir = os.path.join(self.dir, 'song')
+        file_list = os.listdir(self.song_dir)
+        song_lists = list()
+        song_data = list()
+        
+        for song in file_list:
+            let = song.split('.')[-1]
+            
+            if (let == "ogg" or let == "mp3" or let == "wav"):
+                songs = os.path.join(self.song_dir, song)
+                song_lists.append(songs)
+            elif(let == "ini"):
+                data = os.path.join(self.song_dir, song)
+                song_data.append(data)
+
+        self.song_list = [song_lists, song_data]
         
     def new(self):      ########################## Game Initialize
         ### value initialize
@@ -75,7 +94,7 @@ class Game:
         self.start_tick = pg.time.get_ticks()
         
         ### bgm
-        pg.mixer.music.load(os.path.join(self.snd_dir, 'bg_main.ogg'))
+        pg.mixer.music.load(self.bg_main)
 
         ### gameloop start
         self.run()
@@ -288,6 +307,15 @@ class Game:
   
         elif mode == 3:     #stage select screen
             screen_alpha = self.screen_value[0]
+
+            song_na
+            for song in self.song_list:
+                
+
+                
+            self.draw_text(self.language_list[self.language_mode][2], 36, BLACK, 480, 105, screen_alpha, select_index[0])
+            self.draw_text(self.language_list[self.language_mode][3], 36, BLACK, 480, 175, screen_alpha, select_index[1])
+            self.draw_text(self.language_list[self.language_mode][4], 36, BLACK, 480, 245, screen_alpha, select_index[2])
             
     def draw_text(self, text, size, color, x, y, alpha = 255, boldunderline = False):   # Draw Text
         font = pg.font.Font(self.gameFont, size)

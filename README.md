@@ -20,6 +20,7 @@ Update log - - - - - - - - - - - - -
 2020-09-06 : window setting, resorce added
 2020-09-06 #2 : logo screen create
 2020-09-07 : button action, language select added
+2020-09-08 : languague update(Japan, China), screen effect added
 
 - - - - - - - - - - - - - - - - - - -
 
