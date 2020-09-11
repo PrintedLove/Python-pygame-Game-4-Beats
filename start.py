@@ -3,6 +3,7 @@
 # https://printed.tistory.com/
 # This game was created with reference to ParkJuneWoo(korca0220)'s [Finding-the-Rabbit]
 #-*-coding: utf-8
+
 import pygame as pg
 import os, time, random
 
@@ -16,6 +17,7 @@ WHITE = (238, 238, 238)     ### color setting
 BLACK = (32, 36, 32)
 RED = (246, 36, 74)
 BLUE = (32, 105, 246)
+ALPHA_MAX = 255
 
 class Game:
     def __init__(self): ########################## Game Start
@@ -24,7 +26,7 @@ class Game:
         pg.display.set_caption(TITLE)       #title name
         self.screen = pg.display.set_mode((WIDTH, HEIGHT))      #screen size
         self.screen_mode = 0    #screen mode (0: logo, 1: logo2, 2: main, 3: stage select, 10: play)
-        self.screen_value = [-450, 0, 0, 0]       #screen management value
+        self.screen_value = [-ALPHA_MAX, 0, 0, 0]       #screen management value
         self.clock = pg.time.Clock()        #FPS timer
         self.start_tick = 0     #game timer
         self.running = True     #game initialize Boolean value
@@ -118,22 +120,22 @@ class Game:
                     self.sound_click.play()
         
         if self.screen_mode == 0:           ### Logo Screen1
-            self.screen_value[0] += 5
+            self.screen_value[0] += ALPHA_MAX / 51
 
-            if self.screen_value[0] == 300:
+            if self.screen_value[0] == ALPHA_MAX:
                 self.screen_value[0] = 0
                 self.screen_mode = 1
                 pg.mixer.music.play(loops = -1)    
         elif self.screen_mode == 1:             ### Logo Screen2          
             if self.screen_value[3] == 0:
-                if self.screen_value[0] < 255:
-                    self.screen_value[0] += 5
+                if self.screen_value[0] < ALPHA_MAX:
+                    self.screen_value[0] += ALPHA_MAX / 51
                 else:
                     if mouse_click == 1 or key_click != 0:
                         self.screen_value[3] = 1
             else:
                 if self.screen_value[0] > 0:
-                    self.screen_value[0] -= 17
+                    self.screen_value[0] -= ALPHA_MAX / 15
                 else:
                     self.screen_mode = 2
                     self.screen_value[1] = 2
@@ -150,11 +152,11 @@ class Game:
                     self.screen_value[2] -= 1       
         elif self.screen_mode == 2:                     ### Main Screen
             if self.screen_value[2] == 0:
-                if self.screen_value[0] < 255:
-                    self.screen_value[0] += 17
+                if self.screen_value[0] < ALPHA_MAX:
+                    self.screen_value[0] += ALPHA_MAX / 15
                 else:
-                    for i in range(4):                  #mouse cursor check
-                        if mouse_move and mouse_coord[0] > 400 and mouse_coord[0] < 560 and mouse_coord[1] > 105 + i*70 and mouse_coord[1] < 155 + i*70:
+                    for i in range(4):
+                        if mouse_move and 400 < mouse_coord[0] < 560 and 105 + i*70 < mouse_coord[1] < 155 + i*70:      #mouse cursor check
                             self.screen_value[1] = i + 1
 
                     if (key_click == 273 or mouse_click == 4) and self.screen_value[1] > 1:     #key up check
@@ -162,11 +164,11 @@ class Game:
                     elif (key_click == 274 or mouse_click == 5) and self.screen_value[1] < 4:   #key down check
                         self.screen_value[1] += 1
                         
-                    if (mouse_click == 1 or key_click == 13):      #click or key enter check
+                    if (mouse_click == 1 or key_click == 13 or key_click == 275):      #click or key enter, key right check
                         if self.screen_value[1] == 1:       #START
                             self.screen_value[2] = 1
                         elif self.screen_value[1] == 2:     #HELP
-                            self.screen_value[0] = 85
+                            self.screen_value[0] = ALPHA_MAX / 3
                             self.screen_value[2] = 2
                         elif self.screen_value[1] == 3:     #EXIT
                             self.screen_value[2] = 3
@@ -175,7 +177,7 @@ class Game:
                             self.gameFont = os.path.join(self.fnt_dir, self.load_language(1)) if self.load_language(1) != "ERROR" else DEFAULT_FONT 
             elif self.screen_value[2] == 1:
                 if self.screen_value[0] > 0:
-                    self.screen_value[0] -= 17
+                    self.screen_value[0] -= ALPHA_MAX / 15
                 else:
                     self.screen_mode = 3
                     self.screen_value[1] = 0
@@ -185,19 +187,59 @@ class Game:
                     self.screen_value[2] = 0
             elif self.screen_value[2] == 3:
                 if self.screen_value[0] > 0:
-                    self.screen_value[0] -= 17
+                    self.screen_value[0] -= ALPHA_MAX / 15
                 else:
                     self.playing, self.running = False, False
         elif self.screen_mode == 3:                     ### Song Select Screen
-            if self.screen_value[0] < 255:
-                self.screen_value[0] += 5
+            if self.screen_value[2] == 0:
+                if self.screen_value[0] < ALPHA_MAX:
+                    self.screen_value[0] += ALPHA_MAX / 15
 
-            if (key_click == 273 or mouse_click == 4) and self.song_select > 1:     #key up check
-                self.song_select -= 1
-                self.screen_value[0] -= 20
-            elif (key_click == 274 or mouse_click == 5) and self.song_select < self.song_num:   #key down check
-                self.song_select += 1
-                self.screen_value[0] -= 20
+                self.screen_value[1] = 0
+
+                if round(0.31 * WIDTH - 75) < mouse_coord[0] < round(0.31 * WIDTH + 75):        #mouse coord check
+                    if round(0.125 * HEIGHT + 30) > mouse_coord[1]:
+                        self.screen_value[1] = 1
+                    elif round(0.875 * HEIGHT - 30) < mouse_coord[1]:
+                        self.screen_value[1] = 2
+                elif round(0.69 * WIDTH - 75) < mouse_coord[0] < round(0.69 * WIDTH + 75) and round(HEIGHT / 2 + 25) < mouse_coord[1] < round(HEIGHT / 2 + 65):
+                    self.screen_value[1] = 3
+                elif round(0.73 * WIDTH - 75) < mouse_coord[0] < round(0.73 * WIDTH + 75) and round(HEIGHT / 2 + 85) < mouse_coord[1] < round(HEIGHT / 2 + 125):
+                    self.screen_value[1] = 4
+
+                if (mouse_click == 1):              #mouse clickcheck
+                    if self.screen_value[1] == 1:
+                        if self.song_select > 1:
+                            self.song_select -= 1
+                    elif self.screen_value[1] == 2:
+                        if self.song_select < self.song_num:
+                            self.song_select += 1
+                    elif self.screen_value[1] == 3:
+                        self.screen_value[2] = 1
+                    elif self.screen_value[1] == 4:
+                        self.screen_value[2] = 2
+                elif key_click == 273 or mouse_click == 4:     #key check
+                    if self.song_select > 1:
+                        self.song_select -= 1
+                elif key_click == 274 or mouse_click == 5:
+                    if self.song_select < self.song_num:
+                        self.song_select += 1
+                elif key_click == 275 or key_click == 13:
+                    self.screen_value[2] = 1
+                elif key_click == 276:
+                    self.screen_value[2] = 2
+            else:
+                if self.screen_value[0] > 0:
+                    self.screen_value[0] -= ALPHA_MAX / 15
+                else:
+                    if self.screen_value[2] == 1:
+                        self.screen_mode = 10
+                        self.screen_value[1] = 0
+                        self.screen_value[2] = 0
+                    else:
+                        self.screen_mode = 2
+                        self.screen_value[1] = 0
+                        self.screen_value[2] = 0
         
     def draw(self):     ########################## Game Loop - Draw
         self.all_sprites.draw(self.screen)
@@ -213,15 +255,15 @@ class Game:
         screen_alpha = self.screen_value[0]
         
         if mode == 0:       #logo screen1
-            screen_alpha = 255 - min(max(self.screen_value[0], 0), 255)
+            screen_alpha = ALPHA_MAX - min(max(self.screen_value[0], 0), ALPHA_MAX)
             self.spr_printed.set_alpha(screen_alpha)
-            self.screen.blit(self.spr_printed, (93, 200))
+            self.screen.blit(self.spr_printed, (round((WIDTH - 454) / 2), round((HEIGHT - 79) / 2)))
         elif mode == 1:     #logo screen2
-            self.spr_logoback.set_alpha(screen_alpha) if self.screen_value[3] == 0 else self.spr_logoback.set_alpha(255)
+            self.spr_logoback.set_alpha(screen_alpha) if self.screen_value[3] == 0 else self.spr_logoback.set_alpha(ALPHA_MAX)
             spr_logoRescale = pg.transform.scale(self.spr_logo, (301 + self.screen_value[1], 306 + self.screen_value[1]))
             spr_logoRescale.set_alpha(screen_alpha)
             self.screen.blit(self.spr_logoback, (0, 0))
-            self.screen.blit(spr_logoRescale, (320 - round(self.screen_value[1] / 2), 40 - round(self.screen_value[1] / 2)))
+            self.screen.blit(spr_logoRescale, (round((WIDTH - self.screen_value[1]) / 2), 40 - round(self.screen_value[1] / 2)))
         elif mode == 2:     #main screen
             select_index = [True if self.screen_value[1] == i + 1 else False for i in range(4)]
             
@@ -250,33 +292,37 @@ class Game:
         elif mode == 3:     #song select screen
             surface = pg.Surface((WIDTH, HEIGHT))
             surface.fill(WHITE)
-            pg.draw.circle(surface, BLACK, (750, round(HEIGHT / 2)), 770, 1)
-            pg.draw.circle(surface, BLACK, (750, round(HEIGHT / 2)), 460, 1)
-            pg.draw.circle(surface, BLACK, (750, round(HEIGHT / 2)), 200, 1)
-            pg.draw.circle(surface, RED, (750, round(HEIGHT / 2)), 470, 1)
-            pg.draw.circle(surface, BLUE, (750, round(HEIGHT / 2)), 450, 1)
-            surface.set_alpha(max(screen_alpha - 200, 0))
+            circle_coord = (round(WIDTH * 1.2), round(HEIGHT / 2))
+            pg.draw.circle(surface, BLACK, circle_coord, round(0.78 * WIDTH + screen_alpha), 1)
+            pg.draw.circle(surface, BLACK, circle_coord, round(0.32 * WIDTH + screen_alpha), 1)
+            pg.draw.circle(surface, BLACK, circle_coord, max(round(-0.1 * WIDTH + screen_alpha), 1), 1)
+            pg.draw.circle(surface, RED, circle_coord, max(round(-0.12 * WIDTH + screen_alpha), 1), 1)
+            pg.draw.circle(surface, BLUE, circle_coord, max(round(-0.08 * WIDTH + screen_alpha), 1), 1)
+            surface.set_alpha(max(screen_alpha - 50, 0))
             self.screen.blit(surface, (0,0))
             
             if self.song_select > 2:
-                self.draw_text(self.song_list[self.song_select - 3], 16, BLACK, 180, HEIGHT / 2 - 140, max(screen_alpha - 220, 0))
+                self.draw_text(self.song_list[self.song_select - 3], 16, BLACK, round(0.29 * WIDTH), round(0.25 * HEIGHT - 20), max(screen_alpha - 220, 0))
                 
             if self.song_select > 1:
-                self.draw_text(self.song_list[self.song_select - 2], 18, BLACK, 170, HEIGHT / 2 - 80, max(screen_alpha - 180, 0))
-                self.draw_text("△", 24, BLACK, 190, HEIGHT / 2 -210, screen_alpha)
-                #△▽▲▼
-            self.draw_text(self.song_list[self.song_select - 1], 20, BLACK, 160, HEIGHT / 2 - 20, screen_alpha)
+                self.draw_text(self.song_list[self.song_select - 2], 18, BLACK, round(0.27 * WIDTH), round(0.375 * HEIGHT - 20), max(screen_alpha - 180, 0))
+                
+            self.draw_text(self.song_list[self.song_select - 1], 24, BLACK, round(0.25 * WIDTH), round(0.5 * HEIGHT - 20), screen_alpha)
 
             if self.song_select < self.song_num:
-                self.draw_text(self.song_list[self.song_select], 18, BLACK, 170, HEIGHT / 2 + 40, max(screen_alpha - 180, 0))
-                self.draw_text("▽", 24, BLACK, 190, HEIGHT / 2 + 150, screen_alpha)
-
+                self.draw_text(self.song_list[self.song_select], 18, BLACK, round(0.27 * WIDTH), round(0.625 * HEIGHT - 20), max(screen_alpha - 180, 0))
+                
             if self.song_select < self.song_num - 1:
-                self.draw_text(self.song_list[self.song_select + 1], 16, BLACK, 180, HEIGHT / 2 + 100, max(screen_alpha - 220, 0))
-
-            self.draw_text("★★★☆☆", 32, BLACK, 430, HEIGHT / 2 - 100, screen_alpha)
-            self.draw_text(self.load_language(2), 32, BLACK, 425, HEIGHT / 2 + 20, screen_alpha)
-            self.draw_text(self.load_language(6), 32, BLACK, 450, HEIGHT / 2 + 80, screen_alpha)
+                self.draw_text(self.song_list[self.song_select + 1], 16, BLACK, round(0.29 * WIDTH), round(0.75 * HEIGHT - 20), max(screen_alpha - 220, 0))
+            
+            button_songUp = '▲' if self.screen_value[1] == 1 else '△'
+            button_songDown = '▼' if self.screen_value[1] == 2 else '▽'
+            select_index = [True if self.screen_value[1] == i + 3 else False for i in range(2)]
+            self.draw_text(button_songUp, 24, BLACK, round(0.31 * WIDTH), round(0.125 * HEIGHT - 20), screen_alpha)
+            self.draw_text(button_songDown, 24, BLACK, round(0.31 * WIDTH), round(0.875 * HEIGHT - 30), screen_alpha)
+            self.draw_text("★★★☆☆", 32, BLACK, 445, HEIGHT / 2 - 100, screen_alpha)
+            self.draw_text(self.load_language(2), 32, BLACK, round(0.69 * WIDTH), round(HEIGHT / 2 + 25), screen_alpha, select_index[0])
+            self.draw_text(self.load_language(6), 32, BLACK, round(0.73 * WIDTH), round(HEIGHT / 2 + 85), screen_alpha, select_index[1])
 
     def load_language(self, index):
         try:
