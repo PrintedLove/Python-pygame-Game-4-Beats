@@ -75,7 +75,7 @@ class Game:
                 self.song_list.append(song.split('.')[0])
                 self.song_path.append(os.path.join(self.sng_dir, song))
             except:
-                print("error: unsupported format song")
+                print("error: " + str(song) + "is unsupported format music file.")
 
         self.song_num = len(self.song_list)     # available song number
         self.song_data = list()                 # song data file path list
@@ -91,7 +91,7 @@ class Game:
                 self.song_highscore.append(int(song_scoreList.split(':')[-1]))
                 self.song_data.append(song_dataCoord) 
             except:
-                print("error: song data file is damaged or does not exist")
+                print("error: " + str(song) + "'s song data file is damaged or does not exist.")
                 self.song_data.append(-1)
                 self.song_highscore.append(-1)
 
@@ -390,34 +390,33 @@ class Game:
             self.screen.blit(surface, (0,0))
             
             if self.song_select > 2:
-                self.draw_text(self.song_list[self.song_select - 3], 16, BLACK, round(0.29 * WIDTH), round(0.25 * HEIGHT - 20), max(screen_alpha - 220, 0))
+                self.draw_text(self.song_list[self.song_select - 3], 16, BLACK, 0.29 * WIDTH, 0.25 * HEIGHT - 20, max(screen_alpha - 220, 0))
                 
             if self.song_select > 1:
-                self.draw_text(self.song_list[self.song_select - 2], 18, BLACK, round(0.27 * WIDTH), round(0.375 * HEIGHT - 20), max(screen_alpha - 180, 0))
+                self.draw_text(self.song_list[self.song_select - 2], 18, BLACK, 0.27 * WIDTH, 0.375 * HEIGHT - 20, max(screen_alpha - 180, 0))
                 
-            self.draw_text(self.song_list[self.song_select - 1], 24, BLACK, round(0.25 * WIDTH), round(0.5 * HEIGHT - 20), screen_alpha)
+            self.draw_text(self.song_list[self.song_select - 1], 24, BLACK, 0.25 * WIDTH, 0.5 * HEIGHT - 20, screen_alpha)
 
             if self.song_select < self.song_num:
-                self.draw_text(self.song_list[self.song_select], 18, BLACK, round(0.27 * WIDTH), round(0.625 * HEIGHT - 20), max(screen_alpha - 180, 0))
+                self.draw_text(self.song_list[self.song_select], 18, BLACK, 0.27 * WIDTH, 0.625 * HEIGHT - 20, max(screen_alpha - 180, 0))
                 
             if self.song_select < self.song_num - 1:
-                self.draw_text(self.song_list[self.song_select + 1], 16, BLACK, round(0.29 * WIDTH), round(0.75 * HEIGHT - 20), max(screen_alpha - 220, 0))
+                self.draw_text(self.song_list[self.song_select + 1], 16, BLACK, 0.29 * WIDTH, 0.75 * HEIGHT - 20, max(screen_alpha - 220, 0))
             
             button_songUp = '▲' if self.screen_value[1] == 1 else '△'
             button_songDown = '▼' if self.screen_value[1] == 2 else '▽'
             select_index = [True if self.screen_value[1] == i + 3 else False for i in range(2)]
-            self.draw_text(button_songUp, 24, BLACK, round(0.31 * WIDTH), round(0.125 * HEIGHT - 20), screen_alpha)
-            self.draw_text(button_songDown, 24, BLACK, round(0.31 * WIDTH), round(0.875 * HEIGHT - 30), screen_alpha)
+            self.draw_text(button_songUp, 24, BLACK, 0.31 * WIDTH, 0.125 * HEIGHT - 20, screen_alpha)
+            self.draw_text(button_songDown, 24, BLACK, 0.31 * WIDTH, 0.875 * HEIGHT - 30, screen_alpha)
 
             if self.song_highscore[self.song_select - 1] == -1:
-                self.draw_text(self.load_language(12), 32, RED, round(0.71 * WIDTH), round(HEIGHT / 2 - 100), screen_alpha)
+                self.draw_text(self.load_language(12), 32, RED, 0.71 * WIDTH, HEIGHT / 2 - 100, screen_alpha)
             else:
-                self.draw_text(self.load_language(8), 28, BLACK, round(0.69 * WIDTH), round(HEIGHT / 2 - 130), screen_alpha)
-                self.draw_text(str(self.song_highscore[self.song_select - 1]), 28, BLACK, round(0.69 * WIDTH), round(HEIGHT / 2 - 70), screen_alpha)
-                self.draw_text(self.load_language(7), 32, BLACK, round(0.69 * WIDTH), round(HEIGHT / 2 + 25), screen_alpha, select_index[0])
+                self.draw_text(self.load_language(8), 28, BLACK, 0.69 * WIDTH, HEIGHT / 2 - 130, screen_alpha)
+                self.draw_text(str(self.song_highscore[self.song_select - 1]), 28, BLACK, 0.69 * WIDTH, HEIGHT / 2 - 70, screen_alpha)
+                self.draw_text(self.load_language(7), 32, BLACK, 0.69 * WIDTH, HEIGHT / 2 + 25, screen_alpha, select_index[0])
                 
-            self.draw_text(self.load_language(6), 32, BLACK, round(0.73 * WIDTH),
-                           round(HEIGHT / 2 + 85), screen_alpha, select_index[1])
+            self.draw_text(self.load_language(6), 32, BLACK, 0.73 * WIDTH, HEIGHT / 2 + 85, screen_alpha, select_index[1])
         elif self.screen_mode == 4:             #play screen
             surface = pg.Surface((WIDTH, HEIGHT))
             surface.fill(WHITE)
@@ -440,7 +439,7 @@ class Game:
     def draw_sprite(self, coord, spr, alpha = ALPHA_MAX, rot = 0):
         if rot == 0:
             spr.set_alpha(alpha)
-            self.screen.blit(spr, coord)
+            self.screen.blit(spr, (round(coord[0]), round(coord[1])))
         else:
             rotated_spr = pg.transform.rotate(spr, rot)
             rotated_spr.set_alpha(alpha)
@@ -453,7 +452,7 @@ class Game:
         font.set_bold(boldunderline)
         text_surface = font.render(text, True, color)
         text_rect = text_surface.get_rect()
-        text_rect.midtop = (x, y)
+        text_rect.midtop = (round(x), round(y))
             
         if (alpha == 255):
             self.screen.blit(text_surface, text_rect)

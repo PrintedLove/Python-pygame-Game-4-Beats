@@ -5,7 +5,7 @@ Youtube: https://www.youtube.com/channel/UCtKTjiof6Mwa_4ffHDYyCbQ?view_as=subscr
 
 How to play (EN)- - - - - - - - - - - - -
 
-1. Click the START button on the main menu to go to the stage selection window. The game begins when you select a stage.
+1. Click the START button on the main menu to go to the song selection window. The game begins when you select a song.
 
 2. Press the ← (A) and → (D) keys or click left and right on the screen with the mouse to rotate the pattern. 
 
@@ -21,6 +21,10 @@ Update log - - - - - - - - - - - - -
 2020-09-06 #2 : logo screen create
 2020-09-07 : button action, language select added
 2020-09-08 : languague update(Japan, China), screen effect added
+2020-09-09 : add sudtom song add-on
+2020-09-10 : song select funtion added. Custom songs are now available.
+2020-09-11 : somg select menu click,key added. value optimization
+2020-09-13 : play screen created. song data file try - except
 
 - - - - - - - - - - - - - - - - - - -
 
