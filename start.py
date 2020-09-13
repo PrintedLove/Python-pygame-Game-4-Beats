@@ -25,7 +25,7 @@ class Game:
         pg.mixer.init()     #sound mixer
         pg.display.set_caption(TITLE)       #title name
         self.screen = pg.display.set_mode((WIDTH, HEIGHT))      #screen size
-        self.screen_mode = 0    #screen mode (0: logo, 1: logo2, 2: main, 3: stage select, 10: play)
+        self.screen_mode = 0    #screen mode (0: logo, 1: logo2, 2: main, 3: stage select, 4: play)
         self.screen_value = [-ALPHA_MAX, 0, 0, 0]       #screen management value
         self.clock = pg.time.Clock()        #FPS timer
         self.start_tick = 0     #game timer
@@ -51,6 +51,7 @@ class Game:
         self.spr_printed = pg.image.load(os.path.join(self.img_dir, 'printed.png'))
         self.spr_logoback = pg.image.load(os.path.join(self.img_dir, 'logoback.png'))
         self.spr_logo = pg.image.load(os.path.join(self.img_dir, 'logo.png'))
+        self.spr_circle = pg.image.load(os.path.join(self.img_dir, 'circle.png')) 
         
         ### sound
         self.snd_dir = os.path.join(self.dir, 'sound')
@@ -64,12 +65,39 @@ class Game:
         ### song
         self.sng_dir = os.path.join(self.dir, 'song')
         music_type = ["ogg", "mp3", "wav"]
-        self.song_list = [i.split('.')[0] for i in os.listdir(self.sng_dir) if i.split('.')[-1] in music_type]
-        self.song_num = len(self.song_list)
+        song_lists = [i for i in os.listdir(self.sng_dir) if i.split('.')[-1] in music_type]
+        self.song_list = list()         # song name list
+        self.song_path = list()         # song path list
+        
+        for song in song_lists:
+            try:
+                pg.mixer.music.load(os.path.join(self.sng_dir, song))
+                self.song_list.append(song.split('.')[0])
+                self.song_path.append(os.path.join(self.sng_dir, song))
+            except:
+                print("error: unsupported format song")
+
+        self.song_num = len(self.song_list)     # available song number
+        self.song_data = list()                 # song data file path list
+        self.song_highscore = list()            # song highscore data
+        
+        for song in self.song_list:
+            song_dataCoord = os.path.join(self.sng_dir, song + ".ini")
+
+            try:
+                song_file = open(song_dataCoord, "r", encoding = 'UTF-8')
+                song_scoreList = song_file.read().split('\n')[0]
+                song_file.close()
+                self.song_highscore.append(int(song_scoreList.split(':')[-1]))
+                self.song_data.append(song_dataCoord) 
+            except:
+                print("error: song data file is damaged or does not exist")
+                self.song_data.append(-1)
+                self.song_highscore.append(-1)
 
     def new(self):      ########################## Game Initialize
+        self.circle_dir = 1     #circle direction value (benchmark: white / down, right, up, left  == 1, 2, 3, 4)
         self.circle_rot = 0     #circle rotation value
-        self.circle_dir = 0     #circle direction value
         self.textbox_show = 0       #textbox show Boolean value
         self.textbox_text = ""      #textbox text
         self.all_sprites = pg.sprite.Group()        #sprite group
@@ -125,7 +153,7 @@ class Game:
             if self.screen_value[0] == ALPHA_MAX:
                 self.screen_value[0] = 0
                 self.screen_mode = 1
-                pg.mixer.music.play(loops = -1)    
+                pg.mixer.music.play(loops = -1)
         elif self.screen_mode == 1:             ### Logo Screen2          
             if self.screen_value[3] == 0:
                 if self.screen_value[0] < ALPHA_MAX:
@@ -154,6 +182,9 @@ class Game:
             if self.screen_value[2] == 0:
                 if self.screen_value[0] < ALPHA_MAX:
                     self.screen_value[0] += ALPHA_MAX / 15
+
+                    if self.screen_value[3] > 0:
+                        self.screen_value[3] -= ALPHA_MAX / 15
                 else:
                     for i in range(4):
                         if mouse_move and 400 < mouse_coord[0] < 560 and 105 + i*70 < mouse_coord[1] < 155 + i*70:      #mouse cursor check
@@ -182,6 +213,12 @@ class Game:
                     self.screen_mode = 3
                     self.screen_value[1] = 0
                     self.screen_value[2] = 0
+                    
+                    if self.song_highscore[self.song_select - 1] == -1:
+                        pg.mixer.music.fadeout(600)
+                    else:
+                        pg.mixer.music.load(self.song_path[self.song_select - 1])
+                        pg.mixer.music.play(loops = -1)
             elif self.screen_value[2] == 2:
                 if mouse_click == 1 or key_click != 0:
                     self.screen_value[2] = 0
@@ -196,6 +233,7 @@ class Game:
                     self.screen_value[0] += ALPHA_MAX / 15
 
                 self.screen_value[1] = 0
+                songChange = False
 
                 if round(0.31 * WIDTH - 75) < mouse_coord[0] < round(0.31 * WIDTH + 75):        #mouse coord check
                     if round(0.125 * HEIGHT + 30) > mouse_coord[1]:
@@ -206,73 +244,123 @@ class Game:
                     self.screen_value[1] = 3
                 elif round(0.73 * WIDTH - 75) < mouse_coord[0] < round(0.73 * WIDTH + 75) and round(HEIGHT / 2 + 85) < mouse_coord[1] < round(HEIGHT / 2 + 125):
                     self.screen_value[1] = 4
-
+                
                 if (mouse_click == 1):              #mouse clickcheck
                     if self.screen_value[1] == 1:
                         if self.song_select > 1:
                             self.song_select -= 1
+                            songChange = True
                     elif self.screen_value[1] == 2:
                         if self.song_select < self.song_num:
                             self.song_select += 1
+                            songChange = True
                     elif self.screen_value[1] == 3:
-                        self.screen_value[2] = 1
+                        if self.song_highscore[self.song_select - 1] != -1:
+                            self.screen_value[2] = 1
                     elif self.screen_value[1] == 4:
                         self.screen_value[2] = 2
                 elif key_click == 273 or mouse_click == 4:     #key check
                     if self.song_select > 1:
                         self.song_select -= 1
+                        songChange = True
                 elif key_click == 274 or mouse_click == 5:
                     if self.song_select < self.song_num:
                         self.song_select += 1
-                elif key_click == 275 or key_click == 13:
-                    self.screen_value[2] = 1
+                        songChange = True
+                elif key_click == 275 or key_click == 13: 
+                    if self.song_highscore[self.song_select - 1] != -1:
+                        self.screen_value[2] = 1
                 elif key_click == 276:
                     self.screen_value[2] = 2
+
+                if songChange:
+                    if self.song_highscore[self.song_select - 1] == -1:
+                        pg.mixer.music.fadeout(600)
+                    else:
+                        pg.mixer.music.load(self.song_path[self.song_select - 1])
+                        pg.mixer.music.play(loops = -1)
             else:
                 if self.screen_value[0] > 0:
                     self.screen_value[0] -= ALPHA_MAX / 15
                 else:
                     if self.screen_value[2] == 1:
-                        self.screen_mode = 10
+                        self.screen_mode = 4
                         self.screen_value[1] = 0
                         self.screen_value[2] = 0
                     else:
                         self.screen_mode = 2
                         self.screen_value[1] = 0
                         self.screen_value[2] = 0
-        
+                        self.screen_value[3] = ALPHA_MAX
+                        pg.mixer.music.load(self.bg_main)
+                        pg.mixer.music.play(loops = -1)
+        elif self.screen_mode == 4:                             ### Play Screen
+            if self.screen_value[0] < ALPHA_MAX:
+                self.screen_value[0] += ALPHA_MAX / 15
+            
+            if (mouse_click == 1):              #mouse clickcheck
+                if mouse_coord[0] < WIDTH / 2:
+                    self.circle_dir += 1
+                else:
+                    self.circle_dir -= 1
+            elif key_click == 276:              #key check
+                self.circle_dir += 1
+            elif key_click == 275:
+                self.circle_dir -= 1
+
+            if self.circle_dir > 4:         #circle direction management
+                self.circle_dir = 1
+            elif self.circle_dir < 1:
+                self.circle_dir = 4
+
+            rotToDir = (self.circle_dir - 1) * 90       #circle rotation management
+            
+            if self.circle_rot != rotToDir:
+                if self.circle_rot >= rotToDir:
+                    if self.circle_rot >= 270 and rotToDir == 0:
+                        self.circle_rot += 15
+                    else:
+                        self.circle_rot -= 15
+                else:
+                    if self.circle_rot == 0 and rotToDir == 270:
+                        self.circle_rot = 345
+                    else:
+                        self.circle_rot += 15
+                    
+            if self.circle_rot < 0:         
+                self.circle_rot = 345
+            elif self.circle_rot > 345:
+                self.circle_rot = 0
+                
     def draw(self):     ########################## Game Loop - Draw
         self.all_sprites.draw(self.screen)
         self.background = pg.Surface((WIDTH, HEIGHT))           #white background
         self.background = self.background.convert()
         self.background.fill(WHITE)
         self.screen.blit(self.background, (0,0))
-        self.draw_screen(self.screen_mode)                      #draw screen
+        self.draw_screen()                      #draw screen
         self.draw_textbox()         #draw textbox(warnning, error message)
         pg.display.update()
 
-    def draw_screen(self, mode):                    # Draw Screen
+    def draw_screen(self):                    # Draw Screen
         screen_alpha = self.screen_value[0]
         
-        if mode == 0:       #logo screen1
+        if self.screen_mode == 0:       #logo screen1
             screen_alpha = ALPHA_MAX - min(max(self.screen_value[0], 0), ALPHA_MAX)
-            self.spr_printed.set_alpha(screen_alpha)
-            self.screen.blit(self.spr_printed, (round((WIDTH - 454) / 2), round((HEIGHT - 79) / 2)))
-        elif mode == 1:     #logo screen2
+            self.draw_sprite(((WIDTH - 454) / 2, (HEIGHT - 79) / 2), self.spr_printed, screen_alpha)
+        elif self.screen_mode == 1:     #logo screen2
             self.spr_logoback.set_alpha(screen_alpha) if self.screen_value[3] == 0 else self.spr_logoback.set_alpha(ALPHA_MAX)
-            spr_logoRescale = pg.transform.scale(self.spr_logo, (301 + self.screen_value[1], 306 + self.screen_value[1]))
-            spr_logoRescale.set_alpha(screen_alpha)
             self.screen.blit(self.spr_logoback, (0, 0))
-            self.screen.blit(spr_logoRescale, (round((WIDTH - self.screen_value[1]) / 2), 40 - round(self.screen_value[1] / 2)))
-        elif mode == 2:     #main screen
+            spr_logoRescale = pg.transform.scale(self.spr_logo, (301 + self.screen_value[1], 306 + self.screen_value[1]))
+            self.draw_sprite(((WIDTH - self.screen_value[1]) / 2, 40 - self.screen_value[1] / 2), spr_logoRescale, screen_alpha)
+        elif self.screen_mode == 2:     #main screen
             select_index = [True if self.screen_value[1] == i + 1 else False for i in range(4)]
             
             if self.screen_value[2] == 0:
-                self.spr_logoback.set_alpha(255)
-                self.screen.blit(self.spr_logoback, (0, 0))
+                self.draw_sprite((0, 0), self.spr_logoback, ALPHA_MAX - self.screen_value[3])
             else:
                 self.spr_logoback.set_alpha(screen_alpha)
-                logoback_coord = 0 if self.screen_value[2] == 2 else round(screen_alpha - 255) / 10
+                logoback_coord = 0 if self.screen_value[2] == 2 else round((screen_alpha - ALPHA_MAX) / 10)
                 self.screen.blit(self.spr_logoback, (logoback_coord, 0))
                 
             if self.screen_value[2] == 2:
@@ -281,15 +369,15 @@ class Game:
                 help_surface.set_alpha(200)                  
                 self.screen.blit(help_surface, pg.Rect(30, 30, 0, 0))
                 self.draw_text("- " + self.load_language(5) + " -", 36, BLACK, 320, 50, 255)
-                self.draw_text(self.load_language(7), 16, BLACK, 320, 150)
-                self.draw_text(self.load_language(8), 16, BLACK, 320, 220)
-                self.draw_text(self.load_language(9), 16, BLACK, 320, 290)
+                self.draw_text(self.load_language(9), 16, BLACK, 320, 150)
+                self.draw_text(self.load_language(10), 16, BLACK, 320, 220)
+                self.draw_text(self.load_language(11), 16, BLACK, 320, 290)
             else:
                 self.draw_text(self.load_language(2), 36, BLACK, 480, 105, screen_alpha, select_index[0])
                 self.draw_text(self.load_language(3), 36, BLACK, 480, 175, screen_alpha, select_index[1])
                 self.draw_text(self.load_language(4), 36, BLACK, 480, 245, screen_alpha, select_index[2])
                 self.draw_text(self.load_language(0), 24, BLACK, 480, 315, screen_alpha, select_index[3])
-        elif mode == 3:     #song select screen
+        elif self.screen_mode == 3:     #song select screen
             surface = pg.Surface((WIDTH, HEIGHT))
             surface.fill(WHITE)
             circle_coord = (round(WIDTH * 1.2), round(HEIGHT / 2))
@@ -320,10 +408,24 @@ class Game:
             select_index = [True if self.screen_value[1] == i + 3 else False for i in range(2)]
             self.draw_text(button_songUp, 24, BLACK, round(0.31 * WIDTH), round(0.125 * HEIGHT - 20), screen_alpha)
             self.draw_text(button_songDown, 24, BLACK, round(0.31 * WIDTH), round(0.875 * HEIGHT - 30), screen_alpha)
-            self.draw_text("★★★☆☆", 32, BLACK, 445, HEIGHT / 2 - 100, screen_alpha)
-            self.draw_text(self.load_language(2), 32, BLACK, round(0.69 * WIDTH), round(HEIGHT / 2 + 25), screen_alpha, select_index[0])
-            self.draw_text(self.load_language(6), 32, BLACK, round(0.73 * WIDTH), round(HEIGHT / 2 + 85), screen_alpha, select_index[1])
 
+            if self.song_highscore[self.song_select - 1] == -1:
+                self.draw_text(self.load_language(12), 32, RED, round(0.71 * WIDTH), round(HEIGHT / 2 - 100), screen_alpha)
+            else:
+                self.draw_text(self.load_language(8), 28, BLACK, round(0.69 * WIDTH), round(HEIGHT / 2 - 130), screen_alpha)
+                self.draw_text(str(self.song_highscore[self.song_select - 1]), 28, BLACK, round(0.69 * WIDTH), round(HEIGHT / 2 - 70), screen_alpha)
+                self.draw_text(self.load_language(7), 32, BLACK, round(0.69 * WIDTH), round(HEIGHT / 2 + 25), screen_alpha, select_index[0])
+                
+            self.draw_text(self.load_language(6), 32, BLACK, round(0.73 * WIDTH),
+                           round(HEIGHT / 2 + 85), screen_alpha, select_index[1])
+        elif self.screen_mode == 4:             #play screen
+            surface = pg.Surface((WIDTH, HEIGHT))
+            surface.fill(WHITE)
+            pg.draw.circle(surface, BLACK, (round(WIDTH / 2), round(HEIGHT / 2)), 200, 1)
+            surface.set_alpha(max(screen_alpha - 240, 0))
+            self.screen.blit(surface, (0,0))
+            self.draw_sprite(((WIDTH - 99) / 2, (HEIGHT - 99) / 2), self.spr_circle, screen_alpha, self.circle_rot)
+            
     def load_language(self, index):
         try:
             return self.language_list[self.language_mode][index]
@@ -334,7 +436,17 @@ class Game:
         if (self.textbox_show > 0 and not(self.textbox_show)):
             self.textbox_show -= 1
             self.draw_text(textbox_text, 36, RED, WIDTH / 2, HEIGHT / 2)
-            
+
+    def draw_sprite(self, coord, spr, alpha = ALPHA_MAX, rot = 0):
+        if rot == 0:
+            spr.set_alpha(alpha)
+            self.screen.blit(spr, coord)
+        else:
+            rotated_spr = pg.transform.rotate(spr, rot)
+            rotated_spr.set_alpha(alpha)
+            self.screen.blit(rotated_spr, (round(coord[0] + spr.get_width() / 2 - rotated_spr.get_width() / 2),
+                                           round(coord[1] + spr.get_height() / 2 - rotated_spr.get_height() / 2)))
+        
     def draw_text(self, text, size, color, x, y, alpha = 255, boldunderline = False):   # Draw Text
         font = pg.font.Font(self.gameFont, size)
         font.set_underline(boldunderline)
