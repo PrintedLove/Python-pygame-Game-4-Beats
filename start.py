@@ -51,7 +51,8 @@ class Game:
         self.spr_printed = pg.image.load(os.path.join(self.img_dir, 'printed.png'))
         self.spr_logoback = pg.image.load(os.path.join(self.img_dir, 'logoback.png'))
         self.spr_logo = pg.image.load(os.path.join(self.img_dir, 'logo.png'))
-        self.spr_circle = pg.image.load(os.path.join(self.img_dir, 'circle.png')) 
+        self.spr_circle = pg.image.load(os.path.join(self.img_dir, 'circle.png'))
+        self.spr_shot = Spritesheet(os.path.join(self.img_dir, 'shot.png'))
         
         ### sound
         self.snd_dir = os.path.join(self.dir, 'sound')
@@ -79,7 +80,7 @@ class Game:
 
         self.song_num = len(self.song_list)     # available song number
         self.song_data = list()                 # song data file path list
-        self.song_highscore = list()            # song highscore data
+        self.song_highscore = list()            # song highscore list
         
         for song in self.song_list:
             song_dataCoord = os.path.join(self.sng_dir, song + ".ini")
@@ -98,11 +99,11 @@ class Game:
     def new(self):      ########################## Game Initialize
         self.circle_dir = 1     #circle direction value (benchmark: white / down, right, up, left  == 1, 2, 3, 4)
         self.circle_rot = 0     #circle rotation value
+        self.score = 0
         self.textbox_show = 0       #textbox show Boolean value
         self.textbox_text = ""      #textbox text
         self.all_sprites = pg.sprite.Group()        #sprite group
-        self.effects = pg.sprite.Group()
-        self.bars = pg.sprite.Group()
+        self.shots = pg.sprite.Group()
         self.start_tick = pg.time.get_ticks()   #playtime timer
         pg.mixer.music.load(self.bg_main)       #bgm
         self.run()      #gameloop start
@@ -205,7 +206,7 @@ class Game:
                             self.screen_value[2] = 3
                         else:                               #Languague
                             self.language_mode = self.language_mode + 1 if self.language_mode < len(self.language_list) - 1 else 0
-                            self.gameFont = os.path.join(self.fnt_dir, self.load_language(1)) if self.load_language(1) != "ERROR" else DEFAULT_FONT 
+                            self.gameFont = os.path.join(self.fnt_dir, self.load_language(1))
             elif self.screen_value[2] == 1:
                 if self.screen_value[0] > 0:
                     self.screen_value[0] -= ALPHA_MAX / 15
@@ -287,6 +288,18 @@ class Game:
                         self.screen_mode = 4
                         self.screen_value[1] = 0
                         self.screen_value[2] = 0
+                        
+                        shot1 = Shot(self, 1, 0, 0, 1)
+                        self.all_sprites.add(shot1)
+                        self.shots.add(shot1)
+
+                        shot2 = Shot(self, 2, 90, 180, 2)
+                        self.all_sprites.add(shot2)
+                        self.shots.add(shot2)
+
+                        shot3 = Shot(self, 4, 180, 270, 3)
+                        self.all_sprites.add(shot3)
+                        self.shots.add(shot3)
                     else:
                         self.screen_mode = 2
                         self.screen_value[1] = 0
@@ -333,12 +346,12 @@ class Game:
                 self.circle_rot = 0
                 
     def draw(self):     ########################## Game Loop - Draw
-        self.all_sprites.draw(self.screen)
         self.background = pg.Surface((WIDTH, HEIGHT))           #white background
         self.background = self.background.convert()
         self.background.fill(WHITE)
         self.screen.blit(self.background, (0,0))
         self.draw_screen()                      #draw screen
+        self.all_sprites.draw(self.screen)
         self.draw_textbox()         #draw textbox(warnning, error message)
         pg.display.update()
 
@@ -429,7 +442,7 @@ class Game:
         try:
             return self.language_list[self.language_mode][index]
         except:
-            return "ERROR"
+            return "Font Error"
 
     def draw_textbox(self):         
         if (self.textbox_show > 0 and not(self.textbox_show)):
@@ -443,11 +456,14 @@ class Game:
         else:
             rotated_spr = pg.transform.rotate(spr, rot)
             rotated_spr.set_alpha(alpha)
-            self.screen.blit(rotated_spr, (round(coord[0] + spr.get_width() / 2 - rotated_spr.get_width() / 2),
-                                           round(coord[1] + spr.get_height() / 2 - rotated_spr.get_height() / 2)))
+            self.screen.blit(rotated_spr, (round(coord[0] + spr.get_width() / 2 - rotated_spr.get_width() / 2), round(coord[1] + spr.get_height() / 2 - rotated_spr.get_height() / 2)))
         
-    def draw_text(self, text, size, color, x, y, alpha = 255, boldunderline = False):   # Draw Text
-        font = pg.font.Font(self.gameFont, size)
+    def draw_text(self, text, size, color, x, y, alpha = ALPHA_MAX, boldunderline = False):
+        try:
+            font = pg.font.Font(self.gameFont, size)
+        except:
+            font = pg.font.Font(os.path.join(self.fnt_dir, DEFAULT_FONT), size)
+
         font.set_underline(boldunderline)
         font.set_bold(boldunderline)
         text_surface = font.render(text, True, color)
@@ -473,6 +489,75 @@ class Spritesheet:
         
         return image
 
+class Shot(pg.sprite.Sprite):           ####################################### Shot Class
+    def __init__(self, game, color, mode, direction, speed):      #color(RBDW) mode(DRUL) direction(DRUL)
+        pg.sprite.Sprite.__init__(self)
+        self.game = game
+        self.color = color
+        self.mode = mode
+        self.direction = direction
+        self.speed = speed
+        self.touch_coord = [0, 0]
+        self.alpha = ALPHA_MAX
+        image = self.game.spr_shot.get_image((color - 1) * 45, 0, 45, 61)
+        
+        if self.mode == 0:
+            self.image = pg.transform.rotate(image, 270)
+            self.touch_coord = (round(- self.image.get_width() / 2), round(23 - self.image.get_height() / 2))
+        elif self.mode == 90:
+            self.image = image
+            self.touch_coord = (round(23 - self.image.get_width() / 2), round(- self.image.get_height() / 2))
+        elif self.mode == 180:
+            self.image = pg.transform.rotate(image, 90)
+            self.touch_coord = (round(- self.image.get_width() / 2), round(-23 - self.image.get_height() / 2))
+        else:
+            self.image = pg.transform.rotate(image, 180)
+            self.touch_coord = (round(-23 - self.image.get_width() / 2), round(- self.image.get_height() / 2))
+        
+        self.image.set_colorkey((0, 0, 0))
+        self.rect = self.image.get_rect()
+        self.rect.x, self.rect.y = round(WIDTH  / 2), round(HEIGHT / 2)
+
+        if self.direction == 0:
+            self.rect.y += round(WIDTH / 2 + 100)
+        elif self.direction == 90:
+            self.rect.x += round(WIDTH / 2 + 100)
+        elif self.direction == 180:
+            self.rect.y -= round(WIDTH / 2 + 100)
+        else:
+            self.rect.x -= round(WIDTH / 2 + 100)
+
+        self.rect.x += self.touch_coord[0]
+        self.rect.y += self.touch_coord[1]
+        
+    def update(self):
+        coord = [self.rect.x +23, self.rect.y + 31]
+        
+        if self.direction == 0:
+            self.rect.y -= self.speed
+        elif self.direction == 90:
+            self.rect.x -= self.speed
+        elif self.direction == 180:
+            self.rect.y += self.speed
+        else:
+            self.rect.x += self.speed
+
+        if self.rect.x == round(WIDTH / 2) + self.touch_coord[0] and self.rect.y == round(HEIGHT / 2) + self.touch_coord[1]:
+            if self.color == 1:
+                self.game.sound_drum1.play()
+            elif self.color == 2:
+                self.game.sound_drum2.play()
+            elif self.color == 3:
+                self.game.sound_drum3.play()
+            else:
+                self.game.sound_drum4.play()
+                
+            self.game.score += 10
+            self.kill()
+
+        if self.rect.x > WIDTH * 2 or self.rect.x < -WIDTH or self.rect.y > HEIGHT * 2 or self.rect.y < -HEIGHT:
+            self.kill()
+ 
 game = Game()
 
 while game.running:
