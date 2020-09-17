@@ -81,6 +81,7 @@ class Game:
         self.song_num = len(self.song_list)     # available song number
         self.song_data = list()                 # song data file path list
         self.song_highscore = list()            # song highscore list
+        self.song_maxscore = list()            # song maxscore list
         
         for song in self.song_list:
             song_dataCoord = os.path.join(self.sng_dir, song + ".ini")
@@ -89,12 +90,14 @@ class Game:
                 song_file = open(song_dataCoord, "r", encoding = 'UTF-8')
                 song_scoreList = song_file.read().split('\n')[0]
                 song_file.close()
-                self.song_highscore.append(int(song_scoreList.split(':')[-1]))
+                self.song_highscore.append(int(song_scoreList.split(':')[1]))
+                self.song_maxscore.append(int(song_scoreList.split(':')[2]))
                 self.song_data.append(song_dataCoord) 
             except:
                 print("error: " + str(song) + "'s song data file is damaged or does not exist.")
                 self.song_data.append(-1)
                 self.song_highscore.append(-1)
+                self.song_maxscore.append(-1)
 
     def new(self):      ########################## Game Initialize
         self.circle_dir = 1     #circle direction value (benchmark: white / down, right, up, left  == 1, 2, 3, 4)
@@ -122,7 +125,7 @@ class Game:
     
     def update(self):   ########################## Game Loop - Update
         self.all_sprites.update()       #screen update
-        self.second = ((pg.time.get_ticks() - self.start_tick) / 1000)      #play time calculation
+        self.second = round((pg.time.get_ticks() - self.start_tick) / 1000)      #play time calculation
         
     def events(self):   ########################## Game Loop - Events
         mouse_coord = pg.mouse.get_pos()    #mouse coord value
@@ -288,16 +291,17 @@ class Game:
                         self.screen_mode = 4
                         self.screen_value[1] = 0
                         self.screen_value[2] = 0
+                        self.start_tick = pg.time.get_ticks()
                         
                         shot1 = Shot(self, 1, 0, 0, 1)
                         self.all_sprites.add(shot1)
                         self.shots.add(shot1)
 
-                        shot2 = Shot(self, 2, 90, 180, 2)
+                        shot2 = Shot(self, 2, 90, 0, 2)
                         self.all_sprites.add(shot2)
                         self.shots.add(shot2)
 
-                        shot3 = Shot(self, 4, 180, 270, 3)
+                        shot3 = Shot(self, 4, 180, 0, 3)
                         self.all_sprites.add(shot3)
                         self.shots.add(shot3)
                     else:
@@ -425,6 +429,20 @@ class Game:
             if self.song_highscore[self.song_select - 1] == -1:
                 self.draw_text(self.load_language(12), 32, RED, 0.71 * WIDTH, HEIGHT / 2 - 100, screen_alpha)
             else:
+                if self.song_highscore[self.song_select - 1] >= self.song_maxscore[self.song_select - 1]:
+                    try:
+                        font = pg.font.Font(self.gameFont, 36)
+                    except:
+                        font = pg.font.Font(os.path.join(self.fnt_dir, DEFAULT_FONT), 36)
+
+                    font.set_bold(True)
+                    cleartext_surface = font.render(self.load_language(14), False, BLUE)
+                    rotated_surface = pg.transform.rotate(cleartext_surface, 25)
+                    rotated_surface.set_alpha(max(screen_alpha - 180, 0))
+                    cleartext_rect = rotated_surface.get_rect()
+                    cleartext_rect.midtop = (0.71 * WIDTH, HEIGHT / 2 - 150)
+                    self.screen.blit(rotated_surface, cleartext_rect)
+                    
                 self.draw_text(self.load_language(8), 28, BLACK, 0.69 * WIDTH, HEIGHT / 2 - 130, screen_alpha)
                 self.draw_text(str(self.song_highscore[self.song_select - 1]), 28, BLACK, 0.69 * WIDTH, HEIGHT / 2 - 70, screen_alpha)
                 self.draw_text(self.load_language(7), 32, BLACK, 0.69 * WIDTH, HEIGHT / 2 + 25, screen_alpha, select_index[0])
@@ -437,6 +455,16 @@ class Game:
             surface.set_alpha(max(screen_alpha - 240, 0))
             self.screen.blit(surface, (0,0))
             self.draw_sprite(((WIDTH - 99) / 2, (HEIGHT - 99) / 2), self.spr_circle, screen_alpha, self.circle_rot)
+            time_m = self.second // 60
+            time_s = str(self.second - time_m * 60)
+
+            if (len(time_s) == 1):
+                time_s = "0" + time_s
+                
+            time_str = str(time_m) + " : " + time_s
+            self.draw_text(time_str, 24, BLACK, 10 + len(time_str) * 6, 10, screen_alpha)
+            score_str = self.load_language(13) + " : " + str(self.score)
+            self.draw_text(score_str, 24, BLACK, 10 + len(score_str) * 6, 40, screen_alpha)
             
     def load_language(self, index):
         try:
@@ -490,15 +518,16 @@ class Spritesheet:
         return image
 
 class Shot(pg.sprite.Sprite):           ####################################### Shot Class
-    def __init__(self, game, color, mode, direction, speed):      #color(RBDW) mode(DRUL) direction(DRUL)
+    def __init__(self, game, color, mode, direction, speed):      #color(WBDR) mode(DRUL) direction(DRUL)
         pg.sprite.Sprite.__init__(self)
         self.game = game
         self.color = color
         self.mode = mode
         self.direction = direction
         self.speed = speed
-        self.touch_coord = [0, 0]
         self.alpha = ALPHA_MAX
+        self.correct_code = [1, 2, 3, 4]
+        self.correct = 0
         image = self.game.spr_shot.get_image((color - 1) * 45, 0, 45, 61)
         
         if self.mode == 0:
@@ -531,33 +560,45 @@ class Shot(pg.sprite.Sprite):           ####################################### 
         self.rect.y += self.touch_coord[1]
         
     def update(self):
-        coord = [self.rect.x +23, self.rect.y + 31]
-        
-        if self.direction == 0:
-            self.rect.y -= self.speed
-        elif self.direction == 90:
-            self.rect.x -= self.speed
-        elif self.direction == 180:
-            self.rect.y += self.speed
-        else:
-            self.rect.x += self.speed
+        self.image.set_alpha(self.alpha)
 
-        if self.rect.x == round(WIDTH / 2) + self.touch_coord[0] and self.rect.y == round(HEIGHT / 2) + self.touch_coord[1]:
-            if self.color == 1:
-                self.game.sound_drum1.play()
-            elif self.color == 2:
-                self.game.sound_drum2.play()
-            elif self.color == 3:
-                self.game.sound_drum3.play()
+        if self.alpha > 0:
+            if self.correct == 1:
+                self.alpha -= ALPHA_MAX / 5
             else:
-                self.game.sound_drum4.play()
+                if self.correct == -1:
+                    self.alpha -= ALPHA_MAX / 85
                 
-            self.game.score += 10
+                if self.direction == 0:
+                    self.rect.y -= self.speed
+                elif self.direction == 90:
+                    self.rect.x -= self.speed
+                elif self.direction == 180:
+                    self.rect.y += self.speed
+                else:
+                    self.rect.x += self.speed
+
+            if self.rect.x > WIDTH * 2 or self.rect.x < -WIDTH or self.rect.y > HEIGHT * 2 or self.rect.y < -HEIGHT:
+                self.kill()
+        else:
             self.kill()
 
-        if self.rect.x > WIDTH * 2 or self.rect.x < -WIDTH or self.rect.y > HEIGHT * 2 or self.rect.y < -HEIGHT:
-            self.kill()
- 
+        if self.correct == 0 and self.rect.x == round(WIDTH / 2) + self.touch_coord[0] and self.rect.y == round(HEIGHT / 2) + self.touch_coord[1]:
+            if self.game.circle_dir == self.correct_code[round(self.mode / 90 - self.color + 1)]:
+                self.game.score += 100
+                self.correct = 1
+                
+                if self.color == 1:
+                    self.game.sound_drum1.play()
+                elif self.color == 2:
+                    self.game.sound_drum2.play()
+                elif self.color == 3:
+                    self.game.sound_drum3.play()
+                else:
+                    self.game.sound_drum4.play()
+            else:
+                self.correct = -1
+
 game = Game()
 
 while game.running:

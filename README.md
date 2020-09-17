@@ -25,6 +25,7 @@ Update log - - - - - - - - - - - - -
 2020-09-10 : song select funtion added. Custom songs are now available.
 2020-09-11 : somg select menu click,key added. value optimization
 2020-09-13 : play screen created. song data file try - except
+2020-09-15 : add shot system
 
 - - - - - - - - - - - - - - - - - - -
 
