@@ -25,7 +25,7 @@ class Game:
         pg.mixer.init()     #sound mixer
         pg.display.set_caption(TITLE)       #title name
         self.screen = pg.display.set_mode((WIDTH, HEIGHT))      #screen size
-        self.screen_mode = 0    #screen mode (0: logo, 1: logo2, 2: main, 3: stage select, 4: play)
+        self.screen_mode = 0    #screen mode (0: logo, 1: logo2, 2: main, 3: stage select, 4: play, 5: score)
         self.screen_value = [-ALPHA_MAX, 0, 0, 0]       #screen management value
         self.clock = pg.time.Clock()        #FPS timer
         self.start_tick = 0     #game timer
@@ -33,6 +33,8 @@ class Game:
         self.language_mode = 0         #0: english, 1: korean, 2~: custom
         self.song_select = 1    #select song
         self.load_date()        #data loading
+        self.new()
+        pg.mixer.music.load(self.bg_main)       #bgm
 
     def load_date(self): ########################## Data Loading
         self.dir = os.path.dirname(__file__)
@@ -40,9 +42,10 @@ class Game:
         ### font
         self.fnt_dir = os.path.join(self.dir, 'font')
         self.gameFont = os.path.join(self.fnt_dir, DEFAULT_FONT)
-        language_file = open(os.path.join(self.fnt_dir, 'language.ini'), "r", encoding = 'UTF-8')
-        language_lists = language_file.read().split('\n')
-        language_file.close()
+        
+        with open(os.path.join(self.fnt_dir, 'language.ini'), "r", encoding = 'UTF-8') as language_file:
+            language_lists = language_file.read().split('\n')
+            
         self.language_list = [n.split("_") for n in language_lists]
         
         ### image
@@ -79,37 +82,35 @@ class Game:
                 print("error: " + str(song) + "is unsupported format music file.")
 
         self.song_num = len(self.song_list)     # available song number
-        self.song_data = list()                 # song data file path list
-        self.song_highscore = list()            # song highscore list
-        self.song_maxscore = list()            # song maxscore list
+        self.song_dataPath = list()                 # song data file path list
+        self.song_highScore = list()            # song highscore list
+        self.song_perfectScore = list()            # song maxscore list
         
         for song in self.song_list:
             song_dataCoord = os.path.join(self.sng_dir, song + ".ini")
 
             try:
-                song_file = open(song_dataCoord, "r", encoding = 'UTF-8')
-                song_scoreList = song_file.read().split('\n')[0]
-                song_file.close()
-                self.song_highscore.append(int(song_scoreList.split(':')[1]))
-                self.song_maxscore.append(int(song_scoreList.split(':')[2]))
-                self.song_data.append(song_dataCoord) 
+                with open(song_dataCoord, "r", encoding = 'UTF-8') as song_file:
+                    song_scoreList = song_file.read().split('\n')[0]
+                    
+                self.song_highScore.append(int(song_scoreList.split(':')[1]))
+                self.song_perfectScore.append(int(song_scoreList.split(':')[2]))
+                self.song_dataPath.append(song_dataCoord) 
             except:
                 print("error: " + str(song) + "'s song data file is damaged or does not exist.")
-                self.song_data.append(-1)
-                self.song_highscore.append(-1)
-                self.song_maxscore.append(-1)
+                self.song_highScore.append(-1)
+                self.song_perfectScore.append(-1)
+                self.song_dataPath.append(-1) 
 
     def new(self):      ########################## Game Initialize
+        self.song_data = list()     #song data list
+        self.song_dataLen = 0       #song data len
+        self.song_dataIndex = 0     #song data index
         self.circle_dir = 1     #circle direction value (benchmark: white / down, right, up, left  == 1, 2, 3, 4)
         self.circle_rot = 0     #circle rotation value
-        self.score = 0
-        self.textbox_show = 0       #textbox show Boolean value
-        self.textbox_text = ""      #textbox text
+        self.score = 0          #current game score
         self.all_sprites = pg.sprite.Group()        #sprite group
         self.shots = pg.sprite.Group()
-        self.start_tick = pg.time.get_ticks()   #playtime timer
-        pg.mixer.music.load(self.bg_main)       #bgm
-        self.run()      #gameloop start
         
     def run(self):      ########################## Game Loop
         self.playing = True
@@ -125,7 +126,7 @@ class Game:
     
     def update(self):   ########################## Game Loop - Update
         self.all_sprites.update()       #screen update
-        self.second = round((pg.time.get_ticks() - self.start_tick) / 1000)      #play time calculation
+        self.game_tick = pg.time.get_ticks() - self.start_tick      #play time calculation
         
     def events(self):   ########################## Game Loop - Events
         mouse_coord = pg.mouse.get_pos()    #mouse coord value
@@ -218,7 +219,7 @@ class Game:
                     self.screen_value[1] = 0
                     self.screen_value[2] = 0
                     
-                    if self.song_highscore[self.song_select - 1] == -1:
+                    if self.song_highScore[self.song_select - 1] == -1:
                         pg.mixer.music.fadeout(600)
                     else:
                         pg.mixer.music.load(self.song_path[self.song_select - 1])
@@ -259,7 +260,7 @@ class Game:
                             self.song_select += 1
                             songChange = True
                     elif self.screen_value[1] == 3:
-                        if self.song_highscore[self.song_select - 1] != -1:
+                        if self.song_highScore[self.song_select - 1] != -1:
                             self.screen_value[2] = 1
                     elif self.screen_value[1] == 4:
                         self.screen_value[2] = 2
@@ -272,13 +273,13 @@ class Game:
                         self.song_select += 1
                         songChange = True
                 elif key_click == 275 or key_click == 13: 
-                    if self.song_highscore[self.song_select - 1] != -1:
+                    if self.song_highScore[self.song_select - 1] != -1:
                         self.screen_value[2] = 1
                 elif key_click == 276:
                     self.screen_value[2] = 2
 
                 if songChange:
-                    if self.song_highscore[self.song_select - 1] == -1:
+                    if self.song_highScore[self.song_select - 1] == -1:
                         pg.mixer.music.fadeout(600)
                     else:
                         pg.mixer.music.load(self.song_path[self.song_select - 1])
@@ -292,18 +293,7 @@ class Game:
                         self.screen_value[1] = 0
                         self.screen_value[2] = 0
                         self.start_tick = pg.time.get_ticks()
-                        
-                        shot1 = Shot(self, 1, 0, 0, 1)
-                        self.all_sprites.add(shot1)
-                        self.shots.add(shot1)
-
-                        shot2 = Shot(self, 2, 90, 0, 2)
-                        self.all_sprites.add(shot2)
-                        self.shots.add(shot2)
-
-                        shot3 = Shot(self, 4, 180, 0, 3)
-                        self.all_sprites.add(shot3)
-                        self.shots.add(shot3)
+                        self.load_songData()
                     else:
                         self.screen_mode = 2
                         self.screen_value[1] = 0
@@ -312,43 +302,88 @@ class Game:
                         pg.mixer.music.load(self.bg_main)
                         pg.mixer.music.play(loops = -1)
         elif self.screen_mode == 4:                             ### Play Screen
-            if self.screen_value[0] < ALPHA_MAX:
-                self.screen_value[0] += ALPHA_MAX / 15
-            
-            if (mouse_click == 1):              #mouse clickcheck
-                if mouse_coord[0] < WIDTH / 2:
-                    self.circle_dir += 1
-                else:
-                    self.circle_dir -= 1
-            elif key_click == 276:              #key check
-                self.circle_dir += 1
-            elif key_click == 275:
-                self.circle_dir -= 1
-
-            if self.circle_dir > 4:         #circle direction management
-                self.circle_dir = 1
-            elif self.circle_dir < 1:
-                self.circle_dir = 4
-
-            rotToDir = (self.circle_dir - 1) * 90       #circle rotation management
-            
-            if self.circle_rot != rotToDir:
-                if self.circle_rot >= rotToDir:
-                    if self.circle_rot >= 270 and rotToDir == 0:
-                        self.circle_rot += 15
-                    else:
-                        self.circle_rot -= 15
-                else:
-                    if self.circle_rot == 0 and rotToDir == 270:
-                        self.circle_rot = 345
-                    else:
-                        self.circle_rot += 15
-                    
-            if self.circle_rot < 0:         
-                self.circle_rot = 345
-            elif self.circle_rot > 345:
-                self.circle_rot = 0
+            if self.screen_value[1] == 0:
+                if self.screen_value[0] < ALPHA_MAX:
+                    self.screen_value[0] += ALPHA_MAX / 15
                 
+                if (mouse_click == 1):              #mouse clickcheck
+                    if mouse_coord[0] < WIDTH / 2:
+                        self.circle_dir += 1
+                    else:
+                        self.circle_dir -= 1
+                elif key_click == 276:              #key check
+                    self.circle_dir += 1
+                elif key_click == 275:
+                    self.circle_dir -= 1
+
+                if self.circle_dir > 4:         #circle direction management
+                    self.circle_dir = 1
+                elif self.circle_dir < 1:
+                    self.circle_dir = 4
+
+                rotToDir = (self.circle_dir - 1) * 90       #circle rotation management
+                
+                if self.circle_rot != rotToDir:
+                    if self.circle_rot >= rotToDir:
+                        if self.circle_rot >= 270 and rotToDir == 0:
+                            self.circle_rot += 15
+                        else:
+                            self.circle_rot -= 15
+                    else:
+                        if self.circle_rot == 0 and rotToDir == 270:
+                            self.circle_rot = 345
+                        else:
+                            self.circle_rot += 15
+                        
+                if self.circle_rot < 0:         
+                    self.circle_rot = 345
+                elif self.circle_rot > 345:
+                    self.circle_rot = 0
+
+                self.create_shot()          #create shot
+            else:
+                if self.screen_value[0] > 0:
+                    self.screen_value[0] -= ALPHA_MAX / 85
+                else:
+                    self.screen_mode = 5
+                    self.screen_value[1] = 0
+        else:                             ### Score Screen
+            if self.screen_value[1] == 0:
+                if self.screen_value[0] < ALPHA_MAX:
+                    self.screen_value[0] += ALPHA_MAX / 15
+                    
+                if mouse_move:
+                    if round(WIDTH / 2 - 160) < mouse_coord[0] < round(WIDTH / 2 - 40) and round(HEIGHT / 2 + 110) < mouse_coord[1] < round(HEIGHT / 2 + 170):
+                        self.screen_value[2] = 1
+                    elif round(WIDTH / 2 + 40) < mouse_coord[0] < round(WIDTH / 2 + 160) and round(HEIGHT / 2 + 110) < mouse_coord[1] < round(HEIGHT / 2 + 170):
+                        self.screen_value[2] = 2
+
+                if (mouse_click == 1):              #mouse clickcheck
+                    self.screen_value[1] = self.screen_value[2]
+                elif key_click == 276 or mouse_click == 4:     #key check
+                    self.screen_value[2] = 1
+                elif key_click == 275 or mouse_click == 5:
+                    self.screen_value[2] = 2
+                elif key_click == 13: 
+                    self.screen_value[1] = self.screen_value[2]
+            else:
+                if self.screen_value[0] > 0:
+                    self.screen_value[0] -= ALPHA_MAX / 15
+                else:
+                    self.new()
+                    
+                    if self.screen_value[1] == 1:
+                        self.screen_mode = 3
+                        pg.mixer.music.load(self.bg_main)
+                        pg.mixer.music.play(loops = -1)
+                    else:
+                        self.screen_mode = 4
+                        self.start_tick = pg.time.get_ticks()
+                        self.load_songData()
+
+                    self.screen_value[1] = 0
+                    self.screen_value[2] = 0
+                        
     def draw(self):     ########################## Game Loop - Draw
         self.background = pg.Surface((WIDTH, HEIGHT))           #white background
         self.background = self.background.convert()
@@ -356,7 +391,6 @@ class Game:
         self.screen.blit(self.background, (0,0))
         self.draw_screen()                      #draw screen
         self.all_sprites.draw(self.screen)
-        self.draw_textbox()         #draw textbox(warnning, error message)
         pg.display.update()
 
     def draw_screen(self):                    # Draw Screen
@@ -397,13 +431,13 @@ class Game:
         elif self.screen_mode == 3:     #song select screen
             surface = pg.Surface((WIDTH, HEIGHT))
             surface.fill(WHITE)
+            surface.set_alpha(max(screen_alpha - 50, 0))
             circle_coord = (round(WIDTH * 1.2), round(HEIGHT / 2))
             pg.draw.circle(surface, BLACK, circle_coord, round(0.78 * WIDTH + screen_alpha), 1)
             pg.draw.circle(surface, BLACK, circle_coord, round(0.32 * WIDTH + screen_alpha), 1)
             pg.draw.circle(surface, BLACK, circle_coord, max(round(-0.1 * WIDTH + screen_alpha), 1), 1)
             pg.draw.circle(surface, RED, circle_coord, max(round(-0.12 * WIDTH + screen_alpha), 1), 1)
             pg.draw.circle(surface, BLUE, circle_coord, max(round(-0.08 * WIDTH + screen_alpha), 1), 1)
-            surface.set_alpha(max(screen_alpha - 50, 0))
             self.screen.blit(surface, (0,0))
             
             if self.song_select > 2:
@@ -426,10 +460,10 @@ class Game:
             self.draw_text(button_songUp, 24, BLACK, 0.31 * WIDTH, 0.125 * HEIGHT - 20, screen_alpha)
             self.draw_text(button_songDown, 24, BLACK, 0.31 * WIDTH, 0.875 * HEIGHT - 30, screen_alpha)
 
-            if self.song_highscore[self.song_select - 1] == -1:
+            if self.song_highScore[self.song_select - 1] == -1:
                 self.draw_text(self.load_language(12), 32, RED, 0.71 * WIDTH, HEIGHT / 2 - 100, screen_alpha)
             else:
-                if self.song_highscore[self.song_select - 1] >= self.song_maxscore[self.song_select - 1]:
+                if self.song_highScore[self.song_select - 1] >= self.song_perfectScore[self.song_select - 1]:
                     try:
                         font = pg.font.Font(self.gameFont, 36)
                     except:
@@ -444,39 +478,130 @@ class Game:
                     self.screen.blit(rotated_surface, cleartext_rect)
                     
                 self.draw_text(self.load_language(8), 28, BLACK, 0.69 * WIDTH, HEIGHT / 2 - 130, screen_alpha)
-                self.draw_text(str(self.song_highscore[self.song_select - 1]), 28, BLACK, 0.69 * WIDTH, HEIGHT / 2 - 70, screen_alpha)
+                self.draw_text(str(self.song_highScore[self.song_select - 1]), 28, BLACK, 0.69 * WIDTH, HEIGHT / 2 - 70, screen_alpha)
                 self.draw_text(self.load_language(7), 32, BLACK, 0.69 * WIDTH, HEIGHT / 2 + 25, screen_alpha, select_index[0])
                 
             self.draw_text(self.load_language(6), 32, BLACK, 0.73 * WIDTH, HEIGHT / 2 + 85, screen_alpha, select_index[1])
         elif self.screen_mode == 4:             #play screen
             surface = pg.Surface((WIDTH, HEIGHT))
             surface.fill(WHITE)
-            pg.draw.circle(surface, BLACK, (round(WIDTH / 2), round(HEIGHT / 2)), 200, 1)
             surface.set_alpha(max(screen_alpha - 240, 0))
+            pg.draw.circle(surface, BLACK, (round(WIDTH / 2), round(HEIGHT / 2)), 200, 1)
             self.screen.blit(surface, (0,0))
             self.draw_sprite(((WIDTH - 99) / 2, (HEIGHT - 99) / 2), self.spr_circle, screen_alpha, self.circle_rot)
-            time_m = self.second // 60
-            time_s = str(self.second - time_m * 60)
+            time_m = self.game_tick // 60000
+            time_s = str(round(self.game_tick / 1000) - time_m * 60)
 
             if (len(time_s) == 1):
                 time_s = "0" + time_s
                 
             time_str = str(time_m) + " : " + time_s
-            self.draw_text(time_str, 24, BLACK, 10 + len(time_str) * 6, 10, screen_alpha)
             score_str = self.load_language(13) + " : " + str(self.score)
-            self.draw_text(score_str, 24, BLACK, 10 + len(score_str) * 6, 40, screen_alpha)
-            
+            self.draw_text(time_str, 24, BLACK, 10 + len(time_str) * 6, 15, screen_alpha)
+            self.draw_text(score_str, 24, BLACK, WIDTH - 10 - len(score_str) * 6, 15, screen_alpha)
+        else:
+            surface = pg.Surface((WIDTH, HEIGHT))
+            surface.fill(WHITE)
+            surface.set_alpha(max(screen_alpha - 50, 0))
+            circle_coord = (round(WIDTH / 2), round(HEIGHT / 2))
+            pg.draw.circle(surface, BLUE, circle_coord, round(HEIGHT / 2 - 30), 1)
+            pg.draw.circle(surface, BLACK, circle_coord, round(HEIGHT / 2), 1)
+            pg.draw.circle(surface, RED, circle_coord, round(HEIGHT / 2 + 30), 1)
+            self.screen.blit(surface, (0,0))
+            self.draw_text(self.load_language(15) + " : " + str(self.song_perfectScore[self.song_select - 1]), 32, BLACK, WIDTH / 2, HEIGHT / 2 - 65, screen_alpha)
+            self.draw_text(self.load_language(13) + " : " + str(self.score), 32, BLACK, WIDTH / 2, HEIGHT / 2 - 5, screen_alpha)
+            select_index = [True if self.screen_value[2] == i + 1 else False for i in range(2)]
+            self.draw_text(self.load_language(17), 24, BLACK, WIDTH / 2 - 100, HEIGHT / 2 + 125, ALPHA_MAX, select_index[0])
+            self.draw_text(self.load_language(16), 24, BLACK, WIDTH / 2 + 100, HEIGHT / 2 + 125, ALPHA_MAX, select_index[1])
+                        
     def load_language(self, index):
         try:
             return self.language_list[self.language_mode][index]
         except:
             return "Font Error"
 
-    def draw_textbox(self):         
-        if (self.textbox_show > 0 and not(self.textbox_show)):
-            self.textbox_show -= 1
-            self.draw_text(textbox_text, 36, RED, WIDTH / 2, HEIGHT / 2)
+    def load_songData(self):
+        with open(self.song_dataPath[self.song_select - 1], "r", encoding = 'UTF-8') as data_file:
+            data_fileLists = data_file.read().split('\n')
+        
+        for data_line in data_fileLists:
+            if data_line != "" and data_line[0] != 's':
+                data_fileList = data_line.split(' - ')
+                time_list = data_fileList[0].split(':')
+                shot_list = data_fileList[1].split(', ')
+                current_songData = list()
+                current_songData.append(int(time_list[0]) * 60000 + int(time_list[1]) * 1000 + int(time_list[2]) * 10)
+                
+                for shot in shot_list:
+                    if shot[0] == 'E':
+                        shot_color = -1
+                    elif shot[0] == 'W':
+                        shot_color = 1
+                    elif shot[0] == 'B':
+                        shot_color = 2
+                    elif shot[0] == 'D':
+                        shot_color = 3
+                    else:
+                        shot_color = 4
 
+                    if shot_color != -1:
+                        if shot[1] == 'D':
+                            shot_mode = 0
+                        elif shot[1] == 'R':
+                            shot_mode = 90
+                        elif shot[1] == 'U':
+                            shot_mode = 180
+                        else:
+                            shot_mode = 270
+
+                        if shot[2] == 'D':
+                            shot_dir = 0
+                        elif shot[2] == 'R':
+                            shot_dir = 90
+                        elif shot[2] == 'U':
+                            shot_dir = 180
+                        else:
+                            shot_dir = 270
+
+                        shot_data = (shot_color, shot_mode, shot_dir, int(shot[3]))
+                        current_songData.append(shot_data)
+                    else:
+                        shot_data = -1
+                        current_songData.append(shot_data)
+
+                self.song_data.append(current_songData)
+
+    def create_shot(self):
+        if self.game_tick >= self.song_data[self.song_dataIndex][0]:
+            if self.song_data[self.song_dataIndex][1] != -1:
+                shot_num = len(self.song_data[self.song_dataIndex]) - 1
+                
+                for shot in range(shot_num):
+                    shot_data = self.song_data[self.song_dataIndex][shot + 1]
+
+                    obj_shot = Shot(self, shot_data[0], shot_data[1], shot_data[2], shot_data[3])
+                    self.all_sprites.add(obj_shot)
+                    self.shots.add(obj_shot)
+
+                self.song_dataIndex += 1
+            else:
+                if self.score >= self.song_highScore[self.song_select - 1]:
+                    with open(self.song_dataPath[self.song_select - 1], "r", encoding = 'UTF-8') as file:
+                        file_lists = file.read().split('\n')
+
+                    file_list = 'score:' + str(self.score) + ':' + str(self.song_perfectScore[self.song_select - 1]) + '\n'
+
+                    for shot_file in file_lists:
+                        if shot_file != '' and shot_file[0] != 's':
+                            file_list += '\n' + shot_file
+                        
+                    with open(self.song_dataPath[self.song_select - 1], 'w+', encoding = 'UTF-8') as song_file:
+                        song_file.write(file_list)
+
+                    self.song_highScore[self.song_select - 1] = self.score
+                    
+                self.screen_value[1] = 1
+            
     def draw_sprite(self, coord, spr, alpha = ALPHA_MAX, rot = 0):
         if rot == 0:
             spr.set_alpha(alpha)
@@ -498,7 +623,7 @@ class Game:
         text_rect = text_surface.get_rect()
         text_rect.midtop = (round(x), round(y))
             
-        if (alpha == 255):
+        if (alpha == ALPHA_MAX):
             self.screen.blit(text_surface, text_rect)
         else:
             surface = pg.Surface((len(text) * size, size + 20))
@@ -602,6 +727,6 @@ class Shot(pg.sprite.Sprite):           ####################################### 
 game = Game()
 
 while game.running:
-    game.new()
+    game.run()
     
 pg.quit()
