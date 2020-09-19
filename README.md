@@ -26,6 +26,8 @@ Update log - - - - - - - - - - - - -
 2020-09-11 : somg select menu click,key added. value optimization
 2020-09-13 : play screen created. song data file try - except
 2020-09-15 : add shot system
+2020-09-17 : perfect score system added sircle correct system added
+2020-09-19 : final release
 
 - - - - - - - - - - - - - - - - - - -
 
