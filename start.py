@@ -374,8 +374,6 @@ class Game:
                     
                     if self.screen_value[1] == 1:
                         self.screen_mode = 3
-                        pg.mixer.music.load(self.bg_main)
-                        pg.mixer.music.play(loops = -1)
                     else:
                         self.screen_mode = 4
                         self.start_tick = pg.time.get_ticks()
@@ -474,7 +472,7 @@ class Game:
                     rotated_surface = pg.transform.rotate(cleartext_surface, 25)
                     rotated_surface.set_alpha(max(screen_alpha - 180, 0))
                     cleartext_rect = rotated_surface.get_rect()
-                    cleartext_rect.midtop = (0.71 * WIDTH, HEIGHT / 2 - 150)
+                    cleartext_rect.midtop = (round(0.71 * WIDTH), round(HEIGHT / 2 - 150))
                     self.screen.blit(rotated_surface, cleartext_rect)
                     
                 self.draw_text(self.load_language(8), 28, BLACK, 0.69 * WIDTH, HEIGHT / 2 - 130, screen_alpha)
